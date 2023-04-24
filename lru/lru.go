@@ -29,6 +29,7 @@ type Cache struct {
 	// executed when an entry is purged from the cache.
 	OnEvicted func(key Key, value interface{})
 
+	ptr   *list.Element
 	ll    *list.List
 	cache map[interface{}]*list.Element
 }
@@ -37,8 +38,9 @@ type Cache struct {
 type Key interface{}
 
 type entry struct {
-	key   Key
-	value interface{}
+	key     Key
+	Visited bool
+	value   interface{}
 }
 
 // New creates a new Cache.
@@ -47,6 +49,7 @@ type entry struct {
 func New(maxEntries int) *Cache {
 	return &Cache{
 		MaxEntries: maxEntries,
+		ptr:        nil,
 		ll:         list.New(),
 		cache:      make(map[interface{}]*list.Element),
 	}
@@ -57,13 +60,14 @@ func (c *Cache) Add(key Key, value interface{}) {
 	if c.cache == nil {
 		c.cache = make(map[interface{}]*list.Element)
 		c.ll = list.New()
+		c.ptr = nil
 	}
 	if ee, ok := c.cache[key]; ok {
-		c.ll.MoveToFront(ee)
+		ee.Value.(*entry).Visited = true
 		ee.Value.(*entry).value = value
 		return
 	}
-	ele := c.ll.PushFront(&entry{key, value})
+	ele := c.ll.PushFront(&entry{key, false, value})
 	c.cache[key] = ele
 	if c.MaxEntries != 0 && c.ll.Len() > c.MaxEntries {
 		c.RemoveOldest()
@@ -76,7 +80,7 @@ func (c *Cache) Get(key Key) (value interface{}, ok bool) {
 		return
 	}
 	if ele, hit := c.cache[key]; hit {
-		c.ll.MoveToFront(ele)
+		ele.Value.(*entry).Visited = true
 		return ele.Value.(*entry).value, true
 	}
 	return
@@ -97,10 +101,26 @@ func (c *Cache) RemoveOldest() {
 	if c.cache == nil {
 		return
 	}
-	ele := c.ll.Back()
-	if ele != nil {
-		c.removeElement(ele)
+	ele := c.ptr
+	if ele == nil {
+		ele = c.ll.Back()
 	}
+	for ele != nil && ele.Value.(*entry).Visited {
+		ele.Value.(*entry).Visited = false
+		ele = ele.Prev()
+	}
+	if ele == nil {
+		ele = c.ll.Back()
+	}
+	for ele != nil && ele.Value.(*entry).Visited {
+		ele.Value.(*entry).Visited = false
+		ele = ele.Prev()
+	}
+	if ele == nil {
+		println("Error: RemoveOldest cannot find element")
+	}
+	c.ptr = ele.Prev()
+	c.removeElement(ele)
 }
 
 func (c *Cache) removeElement(e *list.Element) {
