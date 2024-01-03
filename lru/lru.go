@@ -39,7 +39,7 @@ type Key interface{}
 
 type entry struct {
 	key     Key
-	Visited bool
+	visited bool
 	value   interface{}
 }
 
@@ -63,7 +63,7 @@ func (c *Cache) Add(key Key, value interface{}) {
 		c.ptr = nil
 	}
 	if ee, ok := c.cache[key]; ok {
-		ee.Value.(*entry).Visited = true
+		ee.Value.(*entry).visited = true
 		ee.Value.(*entry).value = value
 		return
 	}
@@ -80,7 +80,7 @@ func (c *Cache) Get(key Key) (value interface{}, ok bool) {
 		return
 	}
 	if ele, hit := c.cache[key]; hit {
-		ele.Value.(*entry).Visited = true
+		ele.Value.(*entry).visited = true
 		return ele.Value.(*entry).value, true
 	}
 	return
@@ -105,15 +105,8 @@ func (c *Cache) RemoveOldest() {
 	if ele == nil {
 		ele = c.ll.Back()
 	}
-	for ele != nil && ele.Value.(*entry).Visited {
-		ele.Value.(*entry).Visited = false
-		ele = ele.Prev()
-	}
-	if ele == nil {
-		ele = c.ll.Back()
-	}
-	for ele != nil && ele.Value.(*entry).Visited {
-		ele.Value.(*entry).Visited = false
+	for ele != nil && ele.Value.(*entry).visited {
+		ele.Value.(*entry).visited = false
 		ele = ele.Prev()
 	}
 	if ele == nil {
