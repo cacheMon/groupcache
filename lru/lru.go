@@ -67,11 +67,11 @@ func (c *Cache) Add(key Key, value interface{}) {
 		ee.Value.(*entry).value = value
 		return
 	}
-	ele := c.ll.PushFront(&entry{key, false, value})
-	c.cache[key] = ele
-	if c.MaxEntries != 0 && c.ll.Len() > c.MaxEntries {
+	if c.MaxEntries != 0 && c.ll.Len() >= c.MaxEntries {
 		c.RemoveOldest()
 	}
+	ele := c.ll.PushFront(&entry{key, false, value})
+	c.cache[key] = ele
 }
 
 // Get looks up a key's value from the cache.
@@ -105,12 +105,12 @@ func (c *Cache) RemoveOldest() {
 	if ele == nil {
 		ele = c.ll.Back()
 	}
-	for ele != nil && ele.Value.(*entry).visited {
+	for ele.Value.(*entry).visited {
 		ele.Value.(*entry).visited = false
 		ele = ele.Prev()
-	}
-	if ele == nil {
-		println("Error: RemoveOldest cannot find element")
+		if ele == nil {
+			ele = c.ll.Back()
+		}
 	}
 	c.ptr = ele.Prev()
 	c.removeElement(ele)
